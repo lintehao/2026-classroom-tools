@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字雲</title>
+    <!-- Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- wordcloud2.js -->
+    <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.min.js"></script>
+    <!-- QR Code 產生器 -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* 頂部區域：標題 + QR Code */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+            gap: 16px;
+        }
+
+        .header-text h1 {
+            font-size: 28px;
+            color: #1a73e8;
+            margin-bottom: 4px;
+        }
+
+        .header-text p {
+            color: #5f6368;
+            font-size: 14px;
+        }
+
+        .qr-box {
+            flex-shrink: 0;
+            background: #fff;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+        .qr-box #qrcode {
+            display: flex;
+            justify-content: center;
+        }
+
+        .qr-box .qr-label {
+            font-size: 11px;
+            color: #5f6368;
+            margin-top: 6px;
+        }
+
+        /* 輸入卡片 */
+        .input-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-row input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+
+        .input-row input:focus {
+            border-color: #1a73e8;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s, opacity 0.2s;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: #1a73e8;
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #1557b0;
+        }
+
+        /* 訊息提示 */
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .message.success {
+            background: #e6f4ea;
+            color: #1e8e3e;
+            display: block;
+        }
+
+        .message.error {
+            background: #fce8e6;
+            color: #d93025;
+            display: block;
+        }
+
+        /* 控制列 */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .word-count {
+            font-size: 14px;
+            color: #5f6368;
+        }
+
+        .btn-toggle {
+            background: #fff;
+            color: #1a73e8;
+            border: 2px solid #1a73e8;
+        }
+
+        .btn-toggle:hover {
+            background: #e8f0fe;
+        }
+
+        .btn-toggle.active {
+            background: #1a73e8;
+            color: #fff;
+        }
+
+        /* 文字雲卡片 */
+        .cloud-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: opacity 0.3s;
+        }
+
+        .cloud-card.hidden {
+            display: none;
+        }
+
+        #cloudCanvas {
+            width: 100%;
+            height: 400px;
+            display: block;
+        }
+
+        .cloud-empty {
+            text-align: center;
+            color: #9aa0a6;
+            padding: 60px 0;
+            font-size: 16px;
+        }
+
+        /* 響應式 */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .header-text h1 {
+                font-size: 22px;
+            }
+
+            .input-card {
+                padding: 16px;
+            }
+
+            .input-row {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            #cloudCanvas {
+                height: 300px;
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 頂部：標題 + QR Code -->
+        <div class="header">
+            <div class="header-text">
+                <h1>文字雲</h1>
+                <p>輸入你的想法，一起拼出文字雲！</p>
+            </div>
+            <div class="qr-box">
+                <div id="qrcode"></div>
+                <div class="qr-label">掃描加入</div>
+            </div>
+        </div>
+
+        <!-- 輸入區 -->
+        <div class="input-card">
+            <div class="input-row">
+                <input type="text" id="wordInput" maxlength="20" placeholder="輸入文字（最多 20 字）..." autofocus>
+                <button class="btn btn-primary" id="submitBtn" onclick="submitWord()">送出</button>
+            </div>
+        </div>
+
+        <!-- 訊息 -->
+        <div id="message" class="message"></div>
+
+        <!-- 控制列 -->
+        <div class="controls">
+            <span class="word-count" id="wordCount"></span>
+            <button class="btn btn-toggle" id="toggleBtn" onclick="toggleCloud()">顯示文字雲</button>
+        </div>
+
+        <!-- 文字雲 -->
+        <div class="cloud-card hidden" id="cloudSection">
+            <canvas id="cloudCanvas"></canvas>
+            <div class="cloud-empty hidden" id="cloudEmpty">還沒有任何文字，快來輸入第一個！</div>
+        </div>
+    </div>
+
+    <script>
+        // === Supabase 連線（teacherstudy 專案）===
+        const SUPABASE_URL = 'https://pwfhkdkkobzkmsbmzldj.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_b70ifYlW_KWX1U4cKoUlOw_44NUF5Of';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // === 狀態 ===
+        let allWords = [];       // 所有詞彙原始陣列
+        let cloudVisible = false;
+        let cooldown = false;
+
+        // === 顏色組 ===
+        const COLORS = ['#1a73e8', '#ea4335', '#34a853', '#fa7b17', '#9334e8', '#e8345e', '#00897b', '#6d4c41'];
+
+        // === 初始化 ===
+        async function init() {
+            generateQR();
+            await loadWords();
+            subscribeRealtime();
+        }
+
+        // === QR Code ===
+        function generateQR() {
+            const url = window.location.href;
+            const qr = qrcode(0, 'M');
+            qr.addData(url);
+            qr.make();
+            document.getElementById('qrcode').innerHTML = qr.createSvgTag(3, 0);
+        }
+
+        // === 載入所有詞彙 ===
+        async function loadWords() {
+            const { data, error } = await db
+                .from('wordcloud_words')
+                .select('word')
+                .order('created_at');
+
+            if (error) {
+                showMessage('載入失敗：' + error.message, 'error');
+                return;
+            }
+
+            allWords = data.map(d => d.word);
+            updateWordCount();
+            if (cloudVisible) renderCloud();
+        }
+
+        // === 送出詞彙 ===
+        async function submitWord() {
+            const input = document.getElementById('wordInput');
+            const word = input.value.trim();
+
+            if (!word) return;
+            if (cooldown) return;
+
+            // 冷卻 2 秒
+            cooldown = true;
+            document.getElementById('submitBtn').disabled = true;
+            setTimeout(() => {
+                cooldown = false;
+                document.getElementById('submitBtn').disabled = false;
+            }, 2000);
+
+            const { error } = await db
+                .from('wordcloud_words')
+                .insert({ word });
+
+            if (error) {
+                showMessage('送出失敗：' + error.message, 'error');
+                return;
+            }
+
+            input.value = '';
+            input.focus();
+            showMessage('已送出！', 'success');
+        }
+
+        // === Realtime 訂閱 ===
+        function subscribeRealtime() {
+            db.channel('wordcloud-changes')
+                .on('postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'wordcloud_words' },
+                    (payload) => {
+                        allWords.push(payload.new.word);
+                        updateWordCount();
+                        if (cloudVisible) renderCloud();
+                    }
+                )
+                .on('postgres_changes',
+                    { event: 'DELETE', schema: 'public', table: 'wordcloud_words' },
+                    () => {
+                        // 老師用 MCP 清除時，重新載入
+                        loadWords();
+                    }
+                )
+                .subscribe();
+        }
+
+        // === 文字雲渲染 ===
+        function renderCloud() {
+            const canvas = document.getElementById('cloudCanvas');
+            const emptyMsg = document.getElementById('cloudEmpty');
+
+            if (allWords.length === 0) {
+                canvas.style.display = 'none';
+                emptyMsg.classList.remove('hidden');
+                return;
+            }
+
+            canvas.style.display = 'block';
+            emptyMsg.classList.add('hidden');
+
+            // 計算詞頻
+            const freq = {};
+            allWords.forEach(w => {
+                freq[w] = (freq[w] || 0) + 1;
+            });
+
+            // 轉換成 wordcloud2 格式 [["詞", 權重], ...]
+            const list = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+
+            // 設定 canvas 實際尺寸
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width - 48; // 扣掉 padding
+            canvas.height = Math.max(300, Math.min(500, canvas.width * 0.6));
+            canvas.style.height = canvas.height + 'px';
+
+            // 計算最大詞頻，動態調整權重
+            const maxFreq = list[0] ? list[0][1] : 1;
+            const baseSize = Math.max(12, Math.min(40, canvas.width / 20));
+
+            WordCloud(canvas, {
+                list: list,
+                weightFactor: function(size) {
+                    return Math.max(baseSize * 0.5, (size / maxFreq) * baseSize * 2.5);
+                },
+                fontFamily: '"Microsoft JhengHei", "PingFang TC", sans-serif',
+                color: function() {
+                    return COLORS[Math.floor(Math.random() * COLORS.length)];
+                },
+                rotateRatio: 0.3,
+                rotationSteps: 2,
+                backgroundColor: 'transparent',
+                gridSize: Math.round(baseSize * 0.4),
+                shuffle: true,
+                drawOutOfBound: false,
+                shrinkToFit: true,
+            });
+        }
+
+        // === 切換顯示 ===
+        function toggleCloud() {
+            const section = document.getElementById('cloudSection');
+            const btn = document.getElementById('toggleBtn');
+
+            cloudVisible = !cloudVisible;
+
+            if (cloudVisible) {
+                section.classList.remove('hidden');
+                btn.textContent = '隱藏文字雲';
+                btn.classList.add('active');
+                renderCloud();
+            } else {
+                section.classList.add('hidden');
+                btn.textContent = '顯示文字雲';
+                btn.classList.remove('active');
+            }
+        }
+
+        // === 更新詞彙數 ===
+        function updateWordCount() {
+            const countEl = document.getElementById('wordCount');
+            const uniqueCount = new Set(allWords).size;
+            countEl.textContent = `共 ${allWords.length} 筆輸入，${uniqueCount} 個不同詞彙`;
+        }
+
+        // === 訊息提示 ===
+        function showMessage(text, type) {
+            const el = document.getElementById('message');
+            el.textContent = text;
+            el.className = 'message ' + type;
+            setTimeout(() => {
+                el.className = 'message';
+            }, 3000);
+        }
+
+        // === Enter 送出 ===
+        document.getElementById('wordInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitWord();
+        });
+
+        // === 視窗大小變更時重繪 ===
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (cloudVisible) renderCloud();
+            }, 300);
+        });
+
+        // === 啟動 ===
+        init();
+    </script>
+<script src="/nav.js"></script>
+</body>
+</html>

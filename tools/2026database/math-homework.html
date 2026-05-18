@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>數學作業 AI 批改</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            padding: 16px;
+        }
+        .container { max-width: 640px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            padding: 24px 0 16px;
+            color: #fff;
+        }
+        header h1 { font-size: 26px; margin-bottom: 6px; }
+        header p { opacity: 0.9; font-size: 14px; }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        .card h2 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #667eea;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        input[type="text"], input[type="password"], textarea, select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        textarea { min-height: 60px; resize: vertical; }
+
+        .row {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            display: block;
+            padding: 20px;
+            border: 2px dashed #d0d0e0;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            color: #888;
+            transition: all 0.2s;
+            margin-top: 6px;
+        }
+        .file-label:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+            color: #667eea;
+        }
+        .file-label.has-file {
+            border-style: solid;
+            color: #333;
+        }
+
+        #preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: none;
+        }
+        #preview.show { display: block; }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #667eea;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 8px;
+        }
+        button:hover:not(:disabled) { background: #5568d3; }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #result {
+            display: none;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        #result.show { display: block; }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .result-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .badge-correct { background: #e6f4ea; color: #137333; }
+        .badge-wrong { background: #fce8e6; color: #c5221f; }
+        .badge-partial { background: #fef7e0; color: #b06000; }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #888;
+        }
+        .spinner {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .settings-toggle {
+            font-size: 13px;
+            color: #888;
+            text-align: center;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+        .settings-toggle:hover { color: #667eea; }
+        .settings-panel { display: none; }
+        .settings-panel.show { display: block; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📐 數學作業 AI 批改</h1>
+            <p>拍照上傳數學題目和你的解答，AI 幫你檢查</p>
+        </header>
+
+        <!-- 作答卡片 -->
+        <div class="card">
+            <h2>📝 提交作業</h2>
+
+            <div class="row">
+                <div>
+                    <label>班級</label>
+                    <input type="text" id="classId" placeholder="715" value="715">
+                </div>
+                <div>
+                    <label>座號</label>
+                    <input type="text" id="seatNumber" placeholder="1">
+                </div>
+            </div>
+
+            <label>題目編號（例如：課本 p.42 第 3 題）</label>
+            <input type="text" id="questionId" placeholder="p.42 第 3 題">
+
+            <label style="margin-top: 12px;">拍照或選擇圖片</label>
+            <input type="file" id="imageFile" accept="image/*" capture="environment">
+            <label for="imageFile" class="file-label" id="fileLabel">
+                📷 點擊拍照或選擇圖片
+            </label>
+            <img id="preview" alt="預覽">
+
+            <button id="submitBtn" onclick="submitHomework()">送出批改</button>
+
+            <div class="settings-toggle" onclick="toggleSettings()">⚙️ API 設定</div>
+            <div class="settings-panel" id="settingsPanel">
+                <label style="margin-top: 12px;">AI 提供者</label>
+                <select id="providerSelect" onchange="onProviderChange()">
+                    <option value="groq">Groq（⚡ 推薦，免費、超快）</option>
+                    <option value="gemini">Google Gemini</option>
+                </select>
+
+                <label style="margin-top: 12px;">API Key</label>
+                <input type="password" id="apiKey" placeholder="">
+                <p id="keyHelp" style="font-size: 11px; color: #888; margin-top: 6px;"></p>
+
+                <label style="margin-top: 12px;">模型</label>
+                <select id="modelSelect"></select>
+            </div>
+        </div>
+
+        <!-- 批改結果 -->
+        <div class="card" id="resultCard" style="display: none;">
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+        import {
+            getFirestore, collection, addDoc, serverTimestamp
+        } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+
+        // Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyAYQhNavPSce17XtvDC5xnXyl9iUhW9KjA",
+            authDomain: "teacherstudy-109ef.firebaseapp.com",
+            projectId: "teacherstudy-109ef",
+            storageBucket: "teacherstudy-109ef.firebasestorage.app",
+            messagingSenderId: "196599230156",
+            appId: "1:196599230156:web:cfe55d364df3ae1b9d5c69"
+        };
+        const app = initializeApp(firebaseConfig);
+        const fdb = getFirestore(app);
+        const hwRef = collection(fdb, 'math_homework');
+
+        let imageBase64 = null;
+
+        // === AI 提供者設定 ===
+        const PROVIDERS = {
+            groq: {
+                name: 'Groq',
+                endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+                keyPlaceholder: 'gsk_...',
+                keyHelp: '申請：<a href="https://console.groq.com/keys" target="_blank" style="color: #667eea;">console.groq.com/keys</a>（免費、不用綁卡、速度超快）',
+                models: [
+                    { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout 17B（推薦，支援視覺）' }
+                ],
+                format: 'openai'
+            },
+            gemini: {
+                name: 'Gemini',
+                endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={KEY}',
+                keyPlaceholder: 'AIza...',
+                keyHelp: '申請：<a href="https://aistudio.google.com/apikey" target="_blank" style="color: #667eea;">aistudio.google.com/apikey</a>（必須從 AI Studio，非 Google Cloud Console）',
+                models: [
+                    { id: 'gemini-2.5-flash', name: 'gemini-2.5-flash（推薦）' },
+                    { id: 'gemini-2.5-flash-lite', name: 'gemini-2.5-flash-lite（最快）' },
+                    { id: 'gemini-2.0-flash', name: 'gemini-2.0-flash' },
+                    { id: 'gemini-1.5-flash', name: 'gemini-1.5-flash（舊版）' }
+                ],
+                format: 'gemini'
+            }
+        };
+
+        // 切換提供者
+        window.onProviderChange = function() {
+            const provider = document.getElementById('providerSelect').value;
+            const cfg = PROVIDERS[provider];
+            document.getElementById('apiKey').placeholder = cfg.keyPlaceholder;
+            document.getElementById('keyHelp').innerHTML = cfg.keyHelp;
+
+            // 載入該提供者的 Key
+            const savedKey = localStorage.getItem(`${provider}_api_key`) || '';
+            document.getElementById('apiKey').value = savedKey;
+
+            // 載入模型選單
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.innerHTML = cfg.models.map(m =>
+                `<option value="${m.id}">${m.name}</option>`
+            ).join('');
+
+            // 載入記住的模型
+            const savedModel = localStorage.getItem(`${provider}_model`);
+            if (savedModel && cfg.models.find(m => m.id === savedModel)) {
+                modelSelect.value = savedModel;
+            }
+        };
+
+        // 載入使用者設定
+        const savedProvider = localStorage.getItem('ai_provider') || 'groq';
+        document.getElementById('providerSelect').value = savedProvider;
+        window.onProviderChange();
+
+        const savedClass = localStorage.getItem('class_id');
+        if (savedClass) document.getElementById('classId').value = savedClass;
+        const savedSeat = localStorage.getItem('seat_number');
+        if (savedSeat) document.getElementById('seatNumber').value = savedSeat;
+
+        // 圖片選擇處理
+        document.getElementById('imageFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 壓縮圖片
+            const compressed = await compressImage(file, 1024, 0.8);
+            imageBase64 = compressed;
+
+            // 預覽
+            const preview = document.getElementById('preview');
+            preview.src = compressed;
+            preview.classList.add('show');
+
+            // 更新標籤
+            const label = document.getElementById('fileLabel');
+            label.textContent = `✅ 已選擇：${file.name}`;
+            label.classList.add('has-file');
+        });
+
+        // 壓縮圖片
+        function compressImage(file, maxWidth, quality) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let { width, height } = img;
+                        if (width > maxWidth) {
+                            height = (maxWidth / width) * height;
+                            width = maxWidth;
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 顯示 Toast
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        // 切換設定
+        window.toggleSettings = function() {
+            document.getElementById('settingsPanel').classList.toggle('show');
+        };
+
+        // 統一的 prompt
+        function buildPrompt(questionId) {
+            return `你是國中數學老師，正在批改學生的作業。學生交的是「${questionId}」這題。
+
+請看圖片中的題目和學生的解答，然後：
+1. **判斷對錯**：在回應的第一行標明「✅ 答對了」、「⚠️ 部分正確」或「❌ 答錯了」
+2. **簡短解釋**：用 2-3 句話說明學生答對/答錯的關鍵
+3. **改進建議**：如果答錯，提示正確做法（不要直接給答案，讓學生再思考）
+4. **鼓勵的話**：最後給一句鼓勵
+
+請用繁體中文回答，國中生能懂的語氣。`;
+        }
+
+        // 呼叫 AI API（統一入口）
+        async function gradeWithAI(base64Image, questionId, provider, apiKey, modelName) {
+            const cfg = PROVIDERS[provider];
+            const prompt = buildPrompt(questionId);
+
+            if (cfg.format === 'gemini') {
+                return await callGemini(base64Image, prompt, apiKey, modelName);
+            } else if (cfg.format === 'openai') {
+                return await callOpenAICompatible(base64Image, prompt, apiKey, modelName, cfg.endpoint);
+            }
+        }
+
+        // Gemini 格式
+        async function callGemini(base64Image, prompt, apiKey, modelName) {
+            const base64Data = base64Image.split(',')[1];
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: prompt },
+                                { inline_data: { mime_type: 'image/jpeg', data: base64Data } }
+                            ]
+                        }]
+                    })
+                }
+            );
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`Gemini API 錯誤：${err}`);
+            }
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        // OpenAI 相容格式（Groq 使用這個）
+        async function callOpenAICompatible(base64Image, prompt, apiKey, modelName, endpoint) {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: modelName,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: prompt },
+                            { type: 'image_url', image_url: { url: base64Image } }
+                        ]
+                    }],
+                    max_tokens: 1024
+                })
+            });
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`Groq API 錯誤：${err}`);
+            }
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+
+        // 判斷批改結果類型
+        function getResultType(text) {
+            if (text.includes('✅') || text.includes('答對')) return 'correct';
+            if (text.includes('⚠️') || text.includes('部分')) return 'partial';
+            return 'wrong';
+        }
+
+        // 送出批改
+        window.submitHomework = async function() {
+            const classId = document.getElementById('classId').value.trim();
+            const seatNumber = document.getElementById('seatNumber').value.trim();
+            const questionId = document.getElementById('questionId').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const provider = document.getElementById('providerSelect').value;
+            const modelName = document.getElementById('modelSelect').value;
+
+            if (!classId || !seatNumber) {
+                showToast('請輸入班級和座號');
+                return;
+            }
+            if (!questionId) {
+                showToast('請輸入題目編號');
+                return;
+            }
+            if (!imageBase64) {
+                showToast('請先上傳圖片');
+                return;
+            }
+            if (!apiKey) {
+                showToast(`請先設定 ${PROVIDERS[provider].name} API Key`);
+                document.getElementById('settingsPanel').classList.add('show');
+                return;
+            }
+
+            // 記住設定
+            localStorage.setItem('ai_provider', provider);
+            localStorage.setItem(`${provider}_api_key`, apiKey);
+            localStorage.setItem(`${provider}_model`, modelName);
+            localStorage.setItem('class_id', classId);
+            localStorage.setItem('seat_number', seatNumber);
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'AI 批改中...';
+
+            const resultCard = document.getElementById('resultCard');
+            const resultDiv = document.getElementById('result');
+            resultCard.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><div>AI 正在批改你的作業...</div></div>';
+            resultDiv.classList.add('show');
+
+            try {
+                // 呼叫 AI
+                const aiResponse = await gradeWithAI(imageBase64, questionId, provider, apiKey, modelName);
+                const resultType = getResultType(aiResponse);
+
+                // 顯示結果
+                const badgeMap = {
+                    correct: '<span class="result-badge badge-correct">✅ 答對了</span>',
+                    partial: '<span class="result-badge badge-partial">⚠️ 部分正確</span>',
+                    wrong: '<span class="result-badge badge-wrong">❌ 答錯了</span>'
+                };
+                resultDiv.innerHTML = `
+                    <div class="result-header">
+                        <strong>${classId}班 ${seatNumber}號</strong>
+                        ${badgeMap[resultType]}
+                    </div>
+                    <div style="white-space: pre-wrap; line-height: 1.7;">${aiResponse}</div>
+                `;
+
+                // 儲存到 Firestore（只存批改結果和圖片，不存 API Key）
+                await addDoc(hwRef, {
+                    class_id: classId,
+                    seat_number: parseInt(seatNumber),
+                    question_id: questionId,
+                    image_base64: imageBase64,
+                    ai_response: aiResponse,
+                    result_type: resultType,
+                    provider: provider,
+                    model: modelName,
+                    created_at: serverTimestamp()
+                });
+
+                showToast('批改完成，已存到老師端');
+            } catch (e) {
+                console.error(e);
+                resultDiv.innerHTML = `<div style="color: #c5221f;">批改失敗：${e.message}</div>`;
+                showToast('批改失敗');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '送出批改';
+            }
+        };
+    </script>
+<script src="/nav.js"></script>
+</body>
+</html>

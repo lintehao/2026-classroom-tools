@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>速算闖關 — 即時排行榜</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+            background: #0f0c29;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+        /* 頁首 */
+        header {
+            text-align: center;
+            padding: 30px 0 24px;
+        }
+        header h1 { font-size: 36px; font-weight: 900; letter-spacing: 2px; }
+        header h1 span { color: #ffd700; }
+        header p { opacity: 0.75; margin-top: 6px; }
+
+        /* 主版面：遊戲 + 排行榜 */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 10px;
+        }
+        @media (max-width: 700px) { .main-grid { grid-template-columns: 1fr; } }
+
+        /* 卡片 */
+        .card {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 20px;
+            padding: 28px 24px;
+        }
+        .card h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ── 遊戲區 ── */
+        #game-start { text-align: center; }
+        .start-btn {
+            background: linear-gradient(135deg, #f7971e, #ffd200);
+            color: #000;
+            border: none;
+            padding: 16px 48px;
+            font-size: 20px;
+            font-weight: 800;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .start-btn:hover { transform: scale(1.05); box-shadow: 0 8px 24px rgba(255,210,0,.4); }
+
+        #game-play { display: none; }
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .hud-box {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 10px 20px;
+            min-width: 80px;
+        }
+        .hud-box .label { font-size: 11px; opacity: 0.7; text-transform: uppercase; }
+        .hud-box .value { font-size: 26px; font-weight: 800; color: #ffd700; }
+        #timer-val { color: #ff6b6b; }
+
+        .question-box {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .question-box .q-no { font-size: 13px; opacity: 0.6; margin-bottom: 6px; }
+        .question-box .question {
+            font-size: 52px;
+            font-weight: 900;
+            letter-spacing: 4px;
+        }
+
+        .answer-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .answer-row input {
+            flex: 1;
+            background: rgba(255,255,255,0.12);
+            border: 2px solid rgba(255,255,255,0.25);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            padding: 12px;
+            outline: none;
+            transition: border-color .2s;
+        }
+        .answer-row input:focus { border-color: #ffd700; }
+        .answer-row button {
+            background: #ffd700;
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform .1s;
+        }
+        .answer-row button:active { transform: scale(.95); }
+
+        .feedback {
+            text-align: center;
+            height: 28px;
+            font-size: 20px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+        .feedback.correct { color: #4eff91; }
+        .feedback.wrong { color: #ff6b6b; }
+
+        /* 結算 */
+        #game-result { display: none; text-align: center; }
+        .result-score { font-size: 72px; font-weight: 900; color: #ffd700; }
+        .result-score span { font-size: 22px; color: rgba(255,255,255,0.6); }
+        .result-sub { margin: 8px 0 20px; opacity: 0.75; font-size: 15px; }
+
+        .submit-form input {
+            width: 100%;
+            background: rgba(255,255,255,0.12);
+            border: 2px solid rgba(255,255,255,0.25);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 16px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            outline: none;
+        }
+        .submit-form input::placeholder { color: rgba(255,255,255,0.4); }
+        .submit-form input:focus { border-color: #ffd700; }
+        .submit-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #4eff91, #00b4d8);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 17px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: opacity .2s;
+        }
+        .submit-btn:hover { opacity: 0.9; }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .already-submitted { color: #4eff91; font-size: 15px; margin-top: 12px; }
+
+        /* ── 排行榜 ── */
+        .leaderboard-list { list-style: none; }
+        .leaderboard-list li {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.05);
+            transition: background .3s;
+        }
+        .leaderboard-list li.new-entry {
+            animation: highlight .8s ease-out;
+        }
+        @keyframes highlight {
+            from { background: rgba(255,215,0,0.3); }
+            to { background: rgba(255,255,255,0.05); }
+        }
+
+        .rank {
+            font-size: 20px;
+            font-weight: 900;
+            min-width: 36px;
+            text-align: center;
+        }
+        .rank-1 { color: #ffd700; }
+        .rank-2 { color: #c0c0c0; }
+        .rank-3 { color: #cd7f32; }
+
+        .lb-name { flex: 1; font-weight: 600; font-size: 15px; }
+        .lb-score {
+            font-size: 22px;
+            font-weight: 900;
+            color: #ffd700;
+        }
+        .lb-detail { font-size: 12px; opacity: 0.55; text-align: right; }
+
+        .lb-empty { text-align: center; opacity: 0.5; padding: 32px 0; font-size: 14px; }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,80,80,0.2);
+            border: 1px solid rgba(255,80,80,0.4);
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #ff6b6b;
+            margin-left: auto;
+        }
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>⚡ 速算闖關 <span>排行榜</span></h1>
+        <p>10 題計時挑戰 — 答對越快，分數越高！</p>
+    </header>
+
+    <div class="main-grid">
+        <!-- 左：遊戲區 -->
+        <div class="card">
+            <h2>🎮 開始挑戰</h2>
+
+            <!-- 開始畫面 -->
+            <div id="game-start">
+                <p style="opacity:.7; line-height:1.7; margin-bottom:8px;">
+                    共 10 題加減乘除<br>
+                    每題答對得 10 分，答錯不扣分<br>
+                    速度越快，完成獎勵越高！
+                </p>
+                <button class="start-btn" onclick="startGame()">▶ 開始</button>
+            </div>
+
+            <!-- 遊戲中 -->
+            <div id="game-play">
+                <div class="hud">
+                    <div class="hud-box">
+                        <div class="label">題目</div>
+                        <div class="value" id="q-count">1/10</div>
+                    </div>
+                    <div class="hud-box">
+                        <div class="label">答對</div>
+                        <div class="value" id="correct-count">0</div>
+                    </div>
+                    <div class="hud-box">
+                        <div class="label">剩餘</div>
+                        <div class="value" id="timer-val">60</div>
+                    </div>
+                </div>
+
+                <div class="question-box">
+                    <div class="q-no" id="q-label">第 1 題</div>
+                    <div class="question" id="question-text"></div>
+                </div>
+
+                <div class="answer-row">
+                    <input type="number" id="answer-input" placeholder="輸入答案"
+                           onkeydown="if(event.key==='Enter') checkAnswer()">
+                    <button onclick="checkAnswer()">✓</button>
+                </div>
+                <div class="feedback" id="feedback"></div>
+            </div>
+
+            <!-- 結算 -->
+            <div id="game-result">
+                <div class="result-score" id="final-score">0 <span>分</span></div>
+                <div class="result-sub" id="result-sub">答對 0/10 題</div>
+
+                <div class="submit-form">
+                    <input type="text" id="player-name" placeholder="你的姓名或暱稱" maxlength="10">
+                    <input type="text" id="player-seat" placeholder="座號（選填，例如 15）" maxlength="5">
+                    <button class="submit-btn" id="submit-btn" onclick="submitScore()">
+                        🏆 上傳排行榜
+                    </button>
+                </div>
+                <div id="submit-msg"></div>
+                <button onclick="resetGame()" style="
+                    margin-top:14px; background:transparent; border:1px solid rgba(255,255,255,0.3);
+                    color:#fff; border-radius:10px; padding:10px 24px; cursor:pointer; font-size:14px;">
+                    再玩一次
+                </button>
+            </div>
+        </div>
+
+        <!-- 右：排行榜 -->
+        <div class="card">
+            <h2>
+                🏆 即時排行榜
+                <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+            </h2>
+            <ul class="leaderboard-list" id="leaderboard">
+                <li class="lb-empty">等待玩家上傳成績…</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+    import {
+        getFirestore, collection, addDoc, onSnapshot,
+        serverTimestamp, query, orderBy, limit
+    } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+
+    // ── Firebase 設定 ──────────────────────────────────────
+    const firebaseConfig = {
+        apiKey: "AIzaSyAYQhNavPSce17XtvDC5xnXyl9iUhW9KjA",
+        authDomain: "teacherstudy-109ef.firebaseapp.com",
+        projectId: "teacherstudy-109ef",
+        storageBucket: "teacherstudy-109ef.firebasestorage.app",
+        messagingSenderId: "196599230156",
+        appId: "1:196599230156:web:cfe55d364df3ae1b9d5c69"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const fdb = getFirestore(app);
+    const scoresRef = collection(fdb, 'game_scores');
+
+    // ── 上傳分數 ────────────────────────────────────────────
+    window.uploadScore = async function(name, seat, score, correct, total, timeUsed) {
+        await addDoc(scoresRef, {
+            name, seat, score, correct, total, timeUsed,
+            createdAt: serverTimestamp()
+        });
+    };
+
+    // ── 即時排行榜（取前 15 名）────────────────────────────
+    const lb = document.getElementById('leaderboard');
+    let knownIds = new Set();
+
+    const q = query(scoresRef, orderBy('score', 'desc'), limit(15));
+    onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            lb.innerHTML = '<li class="lb-empty">等待玩家上傳成績…</li>';
+            return;
+        }
+
+        const docs = snapshot.docs;
+        lb.innerHTML = '';
+
+        const medals = ['🥇', '🥈', '🥉'];
+        docs.forEach((doc, i) => {
+            const d = doc.data();
+            const isNew = !knownIds.has(doc.id);
+            knownIds.add(doc.id);
+
+            const rankNum = i + 1;
+            const rankDisplay = rankNum <= 3
+                ? `<span class="rank rank-${rankNum}">${medals[i]}</span>`
+                : `<span class="rank" style="opacity:.6">${rankNum}</span>`;
+
+            const seatText = d.seat ? `・座號 ${d.seat}` : '';
+            const timeText = d.timeUsed ? `${d.timeUsed}s` : '';
+
+            const li = document.createElement('li');
+            if (isNew) li.classList.add('new-entry');
+            li.innerHTML = `
+                ${rankDisplay}
+                <span class="lb-name">${escHtml(d.name)}${escHtml(seatText)}</span>
+                <span>
+                    <div class="lb-score">${d.score}</div>
+                    <div class="lb-detail">${d.correct}/${d.total} 題 ${timeText}</div>
+                </span>
+            `;
+            lb.appendChild(li);
+        });
+    });
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+</script>
+
+<!-- 遊戲邏輯 -->
+<script>
+    // ── 題目產生器 ──────────────────────────────────────────
+    const OPS = ['+', '-', '×', '÷'];
+
+    function makeQuestion() {
+        const op = OPS[Math.floor(Math.random() * OPS.length)];
+        let a, b, ans;
+        if (op === '+') {
+            a = rand(10, 99); b = rand(1, 99);
+            ans = a + b;
+        } else if (op === '-') {
+            a = rand(10, 99); b = rand(1, a);
+            ans = a - b;
+        } else if (op === '×') {
+            a = rand(2, 12); b = rand(2, 12);
+            ans = a * b;
+        } else { // ÷
+            ans = rand(2, 12); b = rand(2, 12);
+            a = ans * b;
+        }
+        return { text: `${a} ${op} ${b} = ?`, ans };
+    }
+
+    function rand(lo, hi) {
+        return Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    }
+
+    // ── 遊戲狀態 ────────────────────────────────────────────
+    const TOTAL = 10;
+    const TIME_LIMIT = 60;
+
+    let questions = [], qIndex = 0, correctCount = 0;
+    let timerInterval = null, timeLeft = TIME_LIMIT, gameStartTime = 0;
+
+    function startGame() {
+        questions = Array.from({ length: TOTAL }, makeQuestion);
+        qIndex = 0; correctCount = 0; timeLeft = TIME_LIMIT;
+
+        document.getElementById('game-start').style.display = 'none';
+        document.getElementById('game-result').style.display = 'none';
+        document.getElementById('game-play').style.display = 'block';
+
+        showQuestion();
+
+        gameStartTime = Date.now();
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer-val').textContent = timeLeft;
+            if (timeLeft <= 0) endGame();
+        }, 1000);
+    }
+    window.startGame = startGame;
+
+    function showQuestion() {
+        const q = questions[qIndex];
+        document.getElementById('question-text').textContent = q.text;
+        document.getElementById('q-count').textContent = `${qIndex + 1}/${TOTAL}`;
+        document.getElementById('q-label').textContent = `第 ${qIndex + 1} 題`;
+        document.getElementById('answer-input').value = '';
+        document.getElementById('feedback').textContent = '';
+        document.getElementById('answer-input').focus();
+    }
+
+    function checkAnswer() {
+        const input = document.getElementById('answer-input');
+        const val = parseInt(input.value.trim(), 10);
+        const fb = document.getElementById('feedback');
+
+        if (isNaN(val)) return;
+
+        if (val === questions[qIndex].ans) {
+            correctCount++;
+            document.getElementById('correct-count').textContent = correctCount;
+            fb.textContent = '✓ 正確！';
+            fb.className = 'feedback correct';
+        } else {
+            fb.textContent = `✗ 答案是 ${questions[qIndex].ans}`;
+            fb.className = 'feedback wrong';
+        }
+
+        qIndex++;
+        if (qIndex >= TOTAL) {
+            setTimeout(endGame, 600);
+        } else {
+            setTimeout(showQuestion, 600);
+        }
+    }
+    window.checkAnswer = checkAnswer;
+
+    function endGame() {
+        clearInterval(timerInterval);
+        const timeUsed = Math.round((Date.now() - gameStartTime) / 1000);
+
+        // 計分：答對 × 10 + 速度加成
+        const speedBonus = Math.max(0, Math.floor((TIME_LIMIT - timeUsed) / TIME_LIMIT * 30));
+        const score = correctCount * 10 + speedBonus;
+
+        document.getElementById('game-play').style.display = 'none';
+        document.getElementById('game-result').style.display = 'block';
+        document.getElementById('final-score').innerHTML = `${score} <span>分</span>`;
+        document.getElementById('result-sub').textContent =
+            `答對 ${correctCount}/${TOTAL} 題・用時 ${timeUsed}s・速度加成 +${speedBonus}`;
+
+        // 暫存給 submitScore 用
+        window._lastResult = { score, correct: correctCount, total: TOTAL, timeUsed };
+    }
+
+    window.submitScore = async function() {
+        const name = document.getElementById('player-name').value.trim();
+        if (!name) { alert('請填入姓名或暱稱'); return; }
+
+        const seat = document.getElementById('player-seat').value.trim();
+        const btn = document.getElementById('submit-btn');
+        const msg = document.getElementById('submit-msg');
+        btn.disabled = true;
+        btn.textContent = '上傳中…';
+
+        const { score, correct, total, timeUsed } = window._lastResult;
+        await window.uploadScore(name, seat, score, correct, total, timeUsed);
+
+        btn.style.display = 'none';
+        msg.innerHTML = '<div class="already-submitted">✅ 成績已上傳！看看右側排行榜</div>';
+    };
+
+    window.resetGame = function() {
+        document.getElementById('game-result').style.display = 'none';
+        document.getElementById('game-start').style.display = 'block';
+        document.getElementById('submit-btn').style.display = 'block';
+        document.getElementById('submit-btn').disabled = false;
+        document.getElementById('submit-btn').textContent = '🏆 上傳排行榜';
+        document.getElementById('submit-msg').innerHTML = '';
+    };
+</script>
+<script src="/nav.js"></script>
+</body>
+</html>

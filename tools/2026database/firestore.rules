@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 文字雲集合：任何人可讀寫（公開互動工具）
+    match /wordcloud_words/{document} {
+      allow read, write: if true;
+    }
+
+    // 數學作業批改集合：學生可寫入自己的作答，任何人可讀（老師 + 學生本人看）
+    match /math_homework/{document} {
+      allow read, write: if true;
+    }
+
+    // ───────── EP11：一人一碼教學駕駛艙（Firebase 版） ─────────
+    // student_tokens：學生通行證
+    //   - 允許用 doc id（token）直查單筆（學生掃 QR Code 後查自己的座號）
+    //   - 不允許 list 整個集合（避免被列舉）
+    //   - 寫入由老師端 MCP 直接操作（前端不能寫）
+    match /student_tokens/{token} {
+      // get：學生掃 QR Code 後用 doc id 直查自己的座號
+      // list：老師儀表板要列出全班（只存座號不存姓名，非個資）
+      // write：禁止前端寫入，只允許老師端透過 Firebase MCP 種入
+      allow get, list: if true;
+      allow write: if false;
+    }
+
+    // quiz_assignments：老師派題
+    //   - 公開可讀（學生 onSnapshot 訂閱 active 派題）
+    //   - 寫入由老師端操作（MVP 階段先開放公開寫，正式版可改為密碼或自訂 claims）
+    match /quiz_assignments/{document} {
+      allow read, write: if true;
+    }
+
+    // quiz_responses：學生作答紀錄
+    //   - 只能 create（不能改別人的、不能刪）
+    //   - 讀取由老師端操作（MVP 階段公開讀，方便儀表板統計）
+    match /quiz_responses/{document} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+    // ────────────────────────────────────────────────────
+
+    // ───────── 老師場景示範（Pre-EP11）─────────
+    // game_scores：速算排行榜
+    //   - 任何人可讀（排行榜公開顯示）
+    //   - 任何人可 create（學生上傳分數）
+    //   - 禁止修改 / 刪除
+    match /game_scores/{document} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+
+    // irs_session：IRS 當前題目（老師寫入，學生訂閱）
+    //   - 任何人可讀寫（MVP 階段；正式版可加密碼限制老師寫入）
+    match /irs_session/{document} {
+      allow read, write: if true;
+    }
+
+    // irs_responses：IRS 學生回應
+    //   - 任何人可讀（老師統計圖）
+    //   - 任何人可 create（學生送答）
+    //   - 禁止修改 / 刪除
+    match /irs_responses/{document} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+
+    // formative_responses：形成性評量作答紀錄
+    //   - 任何人可讀（老師儀表板 + Claude MCP 查詢）
+    //   - 任何人可 create（學生送出）
+    //   - 禁止修改 / 刪除
+    match /formative_responses/{document} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+    // ────────────────────────────────────────────
+
+    // 其他集合預設禁止存取（白名單模式）
+    // 未來新增工具時，在這裡加上對應的 match 區塊，
+    // 然後執行 npx firebase-tools deploy --only firestore:rules
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

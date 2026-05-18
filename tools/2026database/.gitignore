@@ -1,4 +1,4 @@
-# Google Drive / 系統檔
+# Google Drive / Windows 系統檔
 desktop.ini
 Thumbs.db
 .DS_Store
@@ -12,7 +12,7 @@ Thumbs.db
 credentials.*
 secrets.*
 
-# AI agent 本地設定（含 permissions、可能記錄 token，絕不上傳）
+# AI agent 本地設定
 .claude/
 .codex/
 
@@ -24,3 +24,7 @@ package-lock.json
 dist/
 build/
 .cache/
+
+# 大型素材輸出先不預設納入
+# *.mp4
+# *.zip

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>形成性評量</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #134e5e, #1a6b4a, #0d3b2e);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container { max-width: 780px; margin: 0 auto; padding: 20px; }
+
+        /* 老師統計頁（?teacher）與學生答題頁（預設）各自獨立 */
+
+        /* ────── 共用 ────── */
+        header { text-align: center; padding: 28px 0 20px; }
+        header h1 { font-size: 30px; font-weight: 900; }
+        header h1 span { color: #55efc4; }
+        header p { opacity: .7; margin-top: 6px; font-size: 14px; }
+
+        .card {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 20px;
+            padding: 28px 26px;
+            margin-bottom: 20px;
+        }
+        .card h2 { font-size: 17px; font-weight: 700; margin-bottom: 18px; }
+
+        /* ────── 學生答題區 ────── */
+        .quiz-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .quiz-meta input {
+            background: rgba(255,255,255,0.12);
+            border: 1.5px solid rgba(255,255,255,0.25);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 15px;
+            padding: 10px 14px;
+            outline: none;
+            width: 200px;
+        }
+        .quiz-meta input::placeholder { color: rgba(255,255,255,.4); }
+        .quiz-meta input:focus { border-color: #55efc4; }
+
+        .progress-bar-track {
+            background: rgba(255,255,255,0.12);
+            border-radius: 8px;
+            height: 8px;
+            flex: 1;
+            margin-left: 16px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #55efc4, #00b894);
+            border-radius: 8px;
+            transition: width .4s ease;
+        }
+        .progress-label { font-size: 13px; opacity: .7; margin-left: 10px; white-space: nowrap; }
+
+        /* 題目卡 */
+        .question-card {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 14px;
+            border-left: 4px solid #55efc4;
+        }
+        .q-title {
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.6;
+            margin-bottom: 14px;
+        }
+        .q-no {
+            font-size: 11px;
+            font-weight: 700;
+            color: #55efc4;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        /* 選擇題選項 */
+        .options { display: flex; flex-direction: column; gap: 8px; }
+        .opt-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            border-radius: 10px;
+            border: 1.5px solid rgba(255,255,255,0.15);
+            cursor: pointer;
+            transition: all .15s;
+            font-size: 15px;
+        }
+        .opt-label:hover { background: rgba(255,255,255,0.08); border-color: #55efc4; }
+        .opt-label input[type=radio] { accent-color: #55efc4; width: 16px; height: 16px; }
+        .opt-label.selected { background: rgba(85,239,196,0.12); border-color: #55efc4; }
+
+        /* 填空 */
+        .fill-input {
+            width: 100%;
+            background: rgba(255,255,255,0.1);
+            border: 1.5px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 15px;
+            padding: 11px 14px;
+            outline: none;
+            font-family: inherit;
+        }
+        .fill-input:focus { border-color: #55efc4; }
+        .fill-input::placeholder { color: rgba(255,255,255,.35); }
+
+        /* 提交 */
+        .submit-area { text-align: center; margin-top: 8px; }
+        .submit-btn {
+            background: linear-gradient(135deg, #55efc4, #00b894);
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            padding: 14px 52px;
+            font-size: 17px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: opacity .2s, transform .15s;
+        }
+        .submit-btn:hover { opacity: .9; transform: scale(1.03); }
+        .submit-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+        /* 送出成功 */
+        .success-card {
+            text-align: center;
+            padding: 48px 20px;
+        }
+        .success-icon { font-size: 64px; }
+        .success-card h2 { font-size: 26px; margin: 16px 0 10px; }
+        .success-card p { opacity: .75; line-height: 1.7; }
+
+        /* ────── 老師統計頁 ────── */
+        .teacher-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .teacher-header h1 { font-size: 24px; font-weight: 900; }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .stat-box {
+            background: rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+        }
+        .stat-box .s-label { font-size: 12px; opacity: .7; text-transform: uppercase; margin-bottom: 6px; }
+        .stat-box .s-val { font-size: 34px; font-weight: 900; color: #55efc4; }
+
+        /* 每題統計 */
+        .q-stat { margin-bottom: 18px; }
+        .q-stat-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; opacity: .9; }
+
+        .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .bar-key { font-size: 13px; min-width: 26px; font-weight: 700; }
+        .bar-track {
+            flex: 1;
+            background: rgba(255,255,255,0.08);
+            border-radius: 6px;
+            height: 26px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width .5s ease;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #000;
+            min-width: 2px;
+        }
+        .bar-cnt { font-size: 15px; font-weight: 700; min-width: 28px; text-align: right; }
+
+        .answer-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .answer-tag {
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 13px;
+        }
+        .answer-tag .tag-name { opacity: .55; font-size: 11px; }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,80,80,0.2);
+            border: 1px solid rgba(255,80,80,0.4);
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #ff6b6b;
+        }
+        .live-dot { width:7px;height:7px;background:#ff6b6b;border-radius:50%;animation:blink 1s infinite; }
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+        .mcp-hint {
+            background: rgba(253,203,110,0.1);
+            border: 1px solid rgba(253,203,110,0.3);
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #fdcb6e;
+        }
+        .mcp-hint code {
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+    import {
+        getFirestore, collection, addDoc, onSnapshot,
+        serverTimestamp, query, orderBy
+    } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+
+    // ── Firebase 設定 ──────────────────────────────────────
+    const firebaseConfig = {
+        apiKey: "AIzaSyAYQhNavPSce17XtvDC5xnXyl9iUhW9KjA",
+        authDomain: "teacherstudy-109ef.firebaseapp.com",
+        projectId: "teacherstudy-109ef",
+        storageBucket: "teacherstudy-109ef.firebasestorage.app",
+        messagingSenderId: "196599230156",
+        appId: "1:196599230156:web:cfe55d364df3ae1b9d5c69"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const fdb = getFirestore(app);
+    const responsesRef = collection(fdb, 'formative_responses');
+
+    // 提交
+    window.submitQuiz = async function(payload) {
+        await addDoc(responsesRef, { ...payload, createdAt: serverTimestamp() });
+    };
+
+    // 老師統計：即時監聽
+    window.listenResults = function(cb) {
+        const q = query(responsesRef, orderBy('createdAt', 'asc'));
+        return onSnapshot(q, (snap) => cb(snap.docs.map(d => d.data())));
+    };
+</script>
+
+<!-- 主邏輯 -->
+<script>
+    // ════════════════════════════════════════════════════
+    // 📝 題目設定（老師修改這裡）
+    // 格式：{ no, type:'mc'|'fill', text, options(mc用), answer(選填，批改用) }
+    // ════════════════════════════════════════════════════
+    const QUIZ_TITLE = '二元一次方程式 — 形成性評量';
+    const QUESTIONS = [
+        {
+            no: 1, type: 'mc',
+            text: '下列哪一個是二元一次方程式？',
+            options: ['x² + y = 3', '2x + 3y = 6', 'x + y + z = 1', 'x² − 4 = 0'],
+            answer: 'B'
+        },
+        {
+            no: 2, type: 'mc',
+            text: '方程式 x + 2y = 8 中，若 x = 2，則 y = ？',
+            options: ['2', '3', '4', '6'],
+            answer: 'B'
+        },
+        {
+            no: 3, type: 'fill',
+            text: '請寫出通過點 (0, 3) 和 (6, 0) 的直線方程式（整理為標準式）。',
+        },
+        {
+            no: 4, type: 'mc',
+            text: '直線 2x + y = 4 與 x 軸的交點座標為？',
+            options: ['(2, 0)', '(0, 4)', '(4, 0)', '(0, 2)'],
+            answer: 'A'
+        },
+        {
+            no: 5, type: 'fill',
+            text: '用一句話說明為什麼「二元一次方程式的解有無限多組」。',
+        },
+    ];
+
+    // ── 判斷老師 / 學生 ────────────────────────────────
+    const isTeacher = new URLSearchParams(location.search).has('teacher');
+
+    if (isTeacher) renderTeacherPage();
+    else renderStudentPage();
+
+    // ════════════════════════════════════════════════════
+    // 學生頁
+    // ════════════════════════════════════════════════════
+    function renderStudentPage() {
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <header>
+                <h1>📝 <span>${esc(QUIZ_TITLE)}</span></h1>
+                <p>作答完畢請按「送出答案」，系統將自動紀錄</p>
+            </header>
+            <div class="card">
+                <div class="quiz-meta">
+                    <input type="text" id="student-name" placeholder="姓名或座號">
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+                    </div>
+                    <span class="progress-label" id="progress-label">0 / ${QUESTIONS.length}</span>
+                </div>
+                <div id="questions-area"></div>
+                <div class="submit-area">
+                    <button class="submit-btn" id="submit-btn" onclick="doSubmit()">
+                        ✅ 送出答案
+                    </button>
+                </div>
+            </div>
+        `;
+
+        const area = document.getElementById('questions-area');
+        QUESTIONS.forEach((q, qi) => {
+            const div = document.createElement('div');
+            div.className = 'question-card';
+            div.id = `qcard-${qi}`;
+
+            if (q.type === 'mc') {
+                div.innerHTML = `
+                    <div class="q-no">第 ${q.no} 題・選擇</div>
+                    <div class="q-title">${esc(q.text)}</div>
+                    <div class="options">
+                        ${q.options.map((opt, oi) => {
+                            const labels = ['A','B','C','D'];
+                            return `<label class="opt-label" id="opt-${qi}-${oi}" onclick="selectOpt(${qi},${oi})">
+                                <input type="radio" name="q${qi}" value="${labels[oi]}">
+                                <span>${labels[oi]}　${esc(opt)}</span>
+                            </label>`;
+                        }).join('')}
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="q-no">第 ${q.no} 題・填答</div>
+                    <div class="q-title">${esc(q.text)}</div>
+                    <input type="text" class="fill-input" id="fill-${qi}"
+                        placeholder="輸入你的答案" oninput="updateProgress()">
+                `;
+            }
+            area.appendChild(div);
+        });
+
+        updateProgress();
+    }
+
+    window.selectOpt = function(qi, oi) {
+        document.querySelectorAll(`[id^="opt-${qi}-"]`).forEach(el => el.classList.remove('selected'));
+        document.getElementById(`opt-${qi}-${oi}`).classList.add('selected');
+        updateProgress();
+    };
+
+    function updateProgress() {
+        let answered = 0;
+        QUESTIONS.forEach((q, qi) => {
+            if (q.type === 'mc') {
+                if (document.querySelector(`input[name="q${qi}"]:checked`)) answered++;
+            } else {
+                const el = document.getElementById(`fill-${qi}`);
+                if (el && el.value.trim()) answered++;
+            }
+        });
+        const pct = Math.round(answered / QUESTIONS.length * 100);
+        const fill = document.getElementById('progress-fill');
+        const lbl = document.getElementById('progress-label');
+        if (fill) fill.style.width = pct + '%';
+        if (lbl) lbl.textContent = `${answered} / ${QUESTIONS.length}`;
+    }
+
+    window.doSubmit = async function() {
+        const name = document.getElementById('student-name').value.trim();
+        if (!name) { alert('請先填入姓名或座號'); return; }
+
+        const answers = {};
+        let allAnswered = true;
+
+        QUESTIONS.forEach((q, qi) => {
+            if (q.type === 'mc') {
+                const checked = document.querySelector(`input[name="q${qi}"]:checked`);
+                answers[`q${q.no}`] = checked ? checked.value : '';
+                if (!checked) allAnswered = false;
+            } else {
+                const val = (document.getElementById(`fill-${qi}`)?.value || '').trim();
+                answers[`q${q.no}`] = val;
+                if (!val) allAnswered = false;
+            }
+        });
+
+        if (!allAnswered) {
+            if (!confirm('還有題目未作答，確定要提交嗎？')) return;
+        }
+
+        // 自動批改選擇題
+        let correct = 0;
+        QUESTIONS.forEach(q => {
+            if (q.type === 'mc' && q.answer && answers[`q${q.no}`] === q.answer) correct++;
+        });
+        const mcTotal = QUESTIONS.filter(q => q.type === 'mc').length;
+
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.textContent = '送出中…';
+
+        await window.submitQuiz({ name, answers, correct, mcTotal, title: QUIZ_TITLE });
+
+        document.getElementById('app').innerHTML = `
+            <div class="card success-card">
+                <div class="success-icon">🎉</div>
+                <h2>答案已送出！</h2>
+                <p>
+                    ${esc(name)}，謝謝你的作答<br>
+                    選擇題答對 <strong>${correct} / ${mcTotal}</strong> 題<br>
+                    老師稍後會用 Claude 分析全班結果
+                </p>
+            </div>
+        `;
+    };
+
+    // ════════════════════════════════════════════════════
+    // 老師統計頁（?teacher）
+    // ════════════════════════════════════════════════════
+    function renderTeacherPage() {
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <header>
+                <h1>📊 <span>${esc(QUIZ_TITLE)}</span></h1>
+                <p>老師統計頁・即時更新 <span class="live-badge" style="vertical-align:middle"><span class="live-dot"></span> LIVE</span></p>
+            </header>
+
+            <div class="card">
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="s-label">已作答人數</div>
+                        <div class="s-val" id="t-count">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="s-label">選擇題平均答對</div>
+                        <div class="s-val" id="t-avg">—</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="s-label">最新提交</div>
+                        <div class="s-val" style="font-size:16px;padding-top:8px" id="t-latest">—</div>
+                    </div>
+                </div>
+
+                <div class="mcp-hint">
+                    💡 <strong>課後可以問 Claude：</strong><br>
+                    「查 <code>formative_responses</code>，第 2 題哪些人答錯？列出名單」<br>
+                    「統計全班第 4 題的選項分布，找出最常見的錯誤」<br>
+                    「把第 5 題所有簡答整理成摘要，看看學生的理解程度」
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📋 各題即時統計</h2>
+                <div id="q-stats"></div>
+            </div>
+        `;
+
+        window.listenResults((responses) => {
+            updateTeacherStats(responses);
+        });
+    }
+
+    function updateTeacherStats(responses) {
+        const count = responses.length;
+        document.getElementById('t-count').textContent = count;
+
+        if (count > 0) {
+            const avgCorrect = responses.reduce((s, r) => s + (r.correct || 0), 0) / count;
+            const mcTotal = responses[0]?.mcTotal || 1;
+            document.getElementById('t-avg').textContent =
+                `${avgCorrect.toFixed(1)} / ${mcTotal}`;
+            document.getElementById('t-latest').textContent =
+                responses[responses.length - 1]?.name || '—';
+        }
+
+        // 各題統計
+        const statsEl = document.getElementById('q-stats');
+        if (!statsEl) return;
+        statsEl.innerHTML = '';
+
+        const barColors = ['#55efc4','#74b9ff','#fdcb6e','#fd79a8'];
+
+        QUESTIONS.forEach(q => {
+            const key = `q${q.no}`;
+            const div = document.createElement('div');
+            div.className = 'q-stat';
+
+            if (q.type === 'mc') {
+                const labels = ['A','B','C','D'];
+                const counts = { A:0, B:0, C:0, D:0 };
+                responses.forEach(r => { if (r.answers?.[key]) counts[r.answers[key]] = (counts[r.answers[key]] || 0) + 1; });
+                const total = count || 1;
+
+                let barsHTML = labels.map((lbl, i) => {
+                    const cnt = counts[lbl] || 0;
+                    const pct = Math.round(cnt / total * 100);
+                    const isAns = q.answer === lbl;
+                    return `
+                        <div class="bar-row">
+                            <span class="bar-key" style="${isAns ? 'color:#55efc4' : ''}">${lbl}${isAns ? ' ✓' : ''}</span>
+                            <div class="bar-track">
+                                <div class="bar-fill" style="width:${pct}%;background:${isAns ? '#55efc4' : barColors[i]}">
+                                    ${pct > 12 ? pct+'%' : ''}
+                                </div>
+                            </div>
+                            <span class="bar-cnt">${cnt}</span>
+                        </div>`;
+                }).join('');
+
+                div.innerHTML = `
+                    <div class="q-stat-title">Q${q.no}・${esc(q.text)}</div>
+                    ${barsHTML}
+                `;
+            } else {
+                // 填空：列出所有答案
+                const answers = responses.map(r => ({ name: r.name, ans: r.answers?.[key] || '' })).filter(x => x.ans);
+                div.innerHTML = `
+                    <div class="q-stat-title">Q${q.no}・${esc(q.text)}</div>
+                    <div class="answer-tags">
+                        ${answers.map(x => `
+                            <div class="answer-tag">
+                                ${esc(x.ans)}
+                                <div class="tag-name">${esc(x.name)}</div>
+                            </div>`).join('') || '<span style="opacity:.4;font-size:13px">尚無作答</span>'}
+                    </div>
+                `;
+            }
+
+            statsEl.appendChild(div);
+        });
+    }
+
+    function esc(s) {
+        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+</script>
+<script src="/nav.js"></script>
+</body>
+</html>
