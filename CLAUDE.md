@@ -9,14 +9,14 @@
 - **接續工作**：對 Claude 說「讀工作日誌，告訴我上次做到哪」
 
 ## 工作桌 + 三個家
-- 📂 GDrive 工作桌：`c:\Users\linte\我的雲端硬碟\2026Claude一桌三櫃\`（自動跨電腦同步）
-- 🐙 GitHub repo：`lintehao/2026-classroom-tools`（公開，網頁的家）
-- 🦉 Obsidian 駐駐腦：`Obsidian Vault/2026Claude一桌三櫃/工作日誌.md`（想法的家）
+- 📂 本地工作桌：`C:\Users\linte\Projects\2026Claude一桌三櫃\`（單機作業，GDrive 不再使用）
+- 🐙 GitHub repo：`lintehao/2026-classroom-tools`（公開，網頁的家、跨裝置備份來源）
+- 🦉 Obsidian 駐駐腦：`C:\Users\linte\Obsidian Vault\2026Claude一桌三櫃\工作日誌.md`（想法的家、本地）
 - 🔥 Firebase 專案：`teacherstudy-109ef`（由 `tools/2026database/` 帶入，資料的家）
 
 ## 工具清單
 （之後加新工具時會自動更新）
-- **2026database**（`tools/2026database/`）：EP09 / EP09.5 / EP11 / EP12 教學實作專案，含 7 個 HTML 工具（成績記錄本、文字雲 ×2、班級 IRS、形成性測驗、遊戲排行榜、數學作業批改）+ Firebase 設定。原獨立 repo `lintehao/2026database` 保留為歷史封存
+- **2026database**（`tools/2026database/`）：EP09 / EP09.5 / EP11 / EP12 教學實作專案，含 7 個 HTML 工具（成績記錄本、文字雲 ×2、班級 IRS、形成性測驗、遊戲排行榜、數學作業批改）+ Firebase 設定。原獨立 repo `lintehao/2026database` 已於 2026-05-18 刪除
 
 ## 工作注意事項
 - 學生資料不得出現識別碼，只用座號 + 班級代號
