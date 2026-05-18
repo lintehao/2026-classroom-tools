@@ -1,14 +1,12 @@
 # 2026database — Codex基本功 EP09 / EP09.5 / EP11 / EP12 實作專案
 
-> ## 📌 對話開始時請先讀這份「駕駛艙」
->
-> **進度、最近更動、下一步、踩坑筆記** 全部維護在 Obsidian：
-> `2026database/專案工作流程.md`（vault 根的同名資料夾）
->
-> 透過 `mcp__obsidian__read_note` 讀取，路徑：`2026database/專案工作流程.md`
+> ## 📌 本檔定位
 >
 > 本檔（`AGENTS.md`）只負責**藍圖**：架構決策、技術細節、檔案對應、Do/Don't。
-> 進度類資訊**不要寫進本檔**，避免雙寫漂移。
+> **進度、最近更動、下一步、踩坑筆記** 一律看母專案 Obsidian 工作日誌：
+> `Obsidian Vault/2026Claude一桌三櫃/工作日誌.md`
+>
+> 為避免雙寫漂移，本檔不維護進度資訊。母專案總指引看上一層的 `CLAUDE.md`。
 
 ## 專案簡介
 Codex基本功 EP09 / EP09.5 / EP11 / EP12 的實作工作目錄：
@@ -46,7 +44,7 @@ Codex基本功 EP09 / EP09.5 / EP11 / EP12 的實作工作目錄：
 |------|------|-----|
 | `G:\我的雲端硬碟\2026數學715\` | 教材 PDF 儲存 + 班上實際使用版本（去識別化、不上 git） | ❌ |
 
-> 完整關係圖請看 Obsidian 駕駛艙的「🛠️ 此邏輯專案會動到的東西」區塊。
+> 完整關係圖請看母專案 Obsidian 工作日誌。
 
 ## Supabase 專案資訊
 
@@ -66,13 +64,19 @@ Codex基本功 EP09 / EP09.5 / EP11 / EP12 的實作工作目錄：
 
 ## Firebase 專案資訊
 
-### my-teaching-tools（Firebase 文字雲，EP09.5）
-- 專案 ID：`my-teaching-tools`
-- Region：`asia-east1` (Taiwan)
-- 集合：`wordcloud_words`（word, created_at）
-- Security Rules：白名單模式，wordcloud_words 公開可讀寫，其他禁止
-- Web App：`1:257256401647:web:9db61fe50e7f22274cc91a`
-- 網頁：https://mathruffian-dot.github.io/2026database/wordcloud-firebase.html
+### teacherstudy-109ef（教學互動工具總庫，EP09.5 / EP11 / EP12）
+- 專案 ID：`teacherstudy-109ef`（與 `.firebaserc` 一致，所有 HTML 工具的 `firebaseConfig` 統一指向此專案）
+- Web App ID：`1:196599230156:web:cfe55d364df3ae1b9d5c69`
+- 集合（與對應工具）：
+  - `wordcloud_words` — Firebase 文字雲（EP09.5）
+  - `math_homework` — 數學作業批改（EP12）
+  - `game_scores` — 遊戲排行榜
+  - `irs_session` / `irs_responses` — 班級 IRS
+  - `formative_responses` — 形成性測驗
+  - `student_tokens` / `quiz_assignments` / `quiz_responses` — EP11 一人一碼
+- Security Rules：白名單模式（白名單以外的集合全部 `allow: if false`），完整規則看 `firestore.rules`
+
+> 早期 EP09.5 彩排時使用過 `my-teaching-tools` 專案，**已棄用**；2026 年起 7 個工具統一收斂到 `teacherstudy-109ef`。
 
 ## 架構決策（彩排後確定）
 
@@ -101,55 +105,58 @@ Codex基本功 EP09 / EP09.5 / EP11 / EP12 的實作工作目錄：
 
 ## 進度與最近更動紀錄
 
-> 🔥 **不在本檔**。請開 Obsidian `2026database/專案工作流程.md`（駕駛艙）查看：
-> - 上次做到哪
-> - 下一步要做什麼
-> - 待辦 / 卡點
-> - 最近更動紀錄
-> - 踩坑筆記
+> 🔥 **不在本檔**。請開母專案 Obsidian 工作日誌：
+> `Obsidian Vault/2026Claude一桌三櫃/工作日誌.md`
 >
 > 為了避免雙寫漂移，本檔不再維護進度資訊。
 
 ## 資料夾結構
 ```
-2026database/
-├── AGENTS.md                   # 專案說明（藍圖）
-├── .gitignore                  # Git 忽略規則
+tools/2026database/
+├── AGENTS.md                   # 本檔：藍圖（Codex 視角）
+├── CLAUDE.md                   # 同藍圖（Claude 視角）
 ├── README.md                   # GitHub 專案入口摘要
+├── .gitignore
 │
-├── firebase.json               # Firebase CLI 設定（EP09.5）
-├── firestore.rules             # Firestore 安全規則（EP09.5 + EP11）
-├── .firebaserc                 # Firebase 專案設定（EP09.5）
+├── firebase.json               # Firebase CLI 設定
+├── firestore.rules             # Firestore 白名單規則
+├── .firebaserc                 # → teacherstudy-109ef
 │
 ├── index.html                  # 班級成績記錄本（EP09，Supabase）
-├── wordcloud.html              # 文字雲互動網頁（EP09，Supabase）
-├── wordcloud-firebase.html     # 文字雲互動網頁（EP09.5，Firebase）
-├── math-homework.html          # 數學作業 AI 批改（EP12，Groq Vision + Firebase）
+├── wordcloud.html              # 文字雲（EP09，Supabase）
+├── wordcloud-firebase.html     # 文字雲（EP09.5，Firebase）
+├── classroom-irs.html          # 班級 IRS（Firebase）
+├── formative-quiz.html         # 形成性測驗（Firebase）
+├── game-leaderboard.html       # 遊戲排行榜（Firebase）
+├── math-homework.html          # 數學作業 AI 批改（EP12，Groq/Gemini Vision + Firebase）
+├── nav.js                      # 共用導覽列
 │
-├── 老師建專案指南.md            # 給觀眾的初學者建專案手冊（v2.1, 948 行）
-├── EP10-老師建專案指南懶人包.md     # 可自客製化範本（內含 meta-prompt）
-│
-└── .Codex/
-    └── launch.json             # 本地預覽伺服器設定
+├── 老師建專案指南.md            # 給觀眾的建專案手冊
+├── EP10-老師建專案指南懶人包.md  # 可客製化範本
+└── EP10-跟著影片做.md           # EP10 影片同步教學
 ```
 
 ## 重要檔案速查表（給 AI 快速 onboarding 用）
 
 | 檔案 | 一句話用途 | 改動頻率 | 對應集數／工作 |
 |------|----------|---------|--------------|
-| `AGENTS.md`（本檔） | **藍圖**：架構決策、技術細節、Do/Don't | 慢（變動會破 prompt cache） | 全系列 |
+| `AGENTS.md`（本檔） | **藍圖**：架構決策、技術細節、Do/Don't（Codex 視角） | 慢（變動會破 prompt cache） | 全系列 |
+| `CLAUDE.md` | 同藍圖（Claude 視角） | 慢 | 全系列 |
 | `README.md` | GitHub 專案入口摘要與工作模式說明 | 低 | 全系列 |
-| `firestore.rules` | Firestore 三 collection 白名單規則 | 中（新工具上線時加） | EP09.5 + EP11 |
+| `firestore.rules` | Firestore 白名單規則（9 個 collection） | 中（新工具上線時加） | EP09.5 + EP11 + 衍生工具 |
 | `index.html` | 班級成績本前端 | 低（已上線） | EP09 |
 | `wordcloud.html` | 文字雲（Supabase 版） | 低（已上線） | EP09 |
 | `wordcloud-firebase.html` | 文字雲（Firebase 版，**對外推薦**） | 低（已上線） | EP09.5 |
-| `math-homework.html` | 拍照→Groq Vision→Firebase | 中（EP12 開發中） | EP12 |
+| `classroom-irs.html` | 班級 IRS（老師發題、學生即時作答） | 中 | 非 EP（衍生工具） |
+| `formative-quiz.html` | 形成性測驗（含老師儀表板） | 中 | 非 EP（衍生工具） |
+| `game-leaderboard.html` | 速算遊戲排行榜 | 低 | 非 EP（衍生工具） |
+| `math-homework.html` | 拍照→Groq/Gemini Vision→Firebase | 中（EP12 開發中） | EP12 |
 | `老師建專案指南.md` | 給觀眾的建專案完整手冊 | 中（持續補強） | EP10 |
 | `EP10-老師建專案指南懶人包.md` | 可自客製化範本（內含 meta-prompt） | 低 | EP10 |
 
 **EP11 主要程式碼不在本 repo**，在 [`mathruffian-dot/math-cockpit`](https://github.com/mathruffian-dot/math-cockpit)（`2-2-linear-equation-graph/index.html`、`qr-generator.html`、`teacher-dashboard.html`）。本 repo 只負責 EP11 對應的 `firestore.rules` 段落。
 
-> 💡 **想知道某檔案最近改了什麼？** 看 Obsidian 駕駛艙 `2026database/專案工作流程.md` 的「最近更動紀錄」表格。
+> 💡 **想知道某檔案最近改了什麼？** 看母專案 Obsidian 工作日誌 `Obsidian Vault/2026Claude一桌三櫃/工作日誌.md`，或 `git log -- <file>`。
 
 ## 檔案對應集數
 
@@ -161,26 +168,6 @@ Codex基本功 EP09 / EP09.5 / EP11 / EP12 的實作工作目錄：
 | EP12 | 本地 AI 與免費 API（Ollama/Groq/Gemini） | `math-homework.html` |
 
 > 📌 **彩排筆記與 EP09.5 Firebase 彩排重點兩段已歸檔**（2026-04-19 瘦身）：
-> 內容已內化進對應的創作庫腳本（EP09 / EP09.5）+ 駕駛艙踩坑筆記（`2026database/專案工作流程.md` 「🕳️ 踩坑筆記」段第 1-16 條）+ 三份 EP10 配套。在本檔重複保留會稀釋藍圖密度。
+> 內容已內化進對應的創作庫腳本（EP09 / EP09.5）+ 母專案工作日誌的踩坑筆記區 + 三份 EP10 配套。在本檔重複保留會稀釋藍圖密度。
 
-## 三處同步指引
-
-| 平台 | 路徑 / 位置 | 用途 |
-|------|-------------|------|
-| Google Drive | `G:\我的雲端硬碟\2026database\` | 主要工作目錄，Codex 直接讀寫 |
-| Obsidian | `2026database/` | 第二大腦，佐證素材與草稿撰寫 |
-| GitHub | `mathruffian-dot/2026database` | 版本控制與備份（公開 repo） |
-
-## 工作注意事項
-- 此資料夾位於 Google 雲端硬碟
-- 跨裝置作業，每次開始前應先瀏覽現有檔案確認最新狀態
-- 新增或修改檔案後，更新「資料夾結構」與「最近更動紀錄」
-- 每次對話結束前，確認三處同步狀態是否一致
-- 示範時使用假資料，不要放真實學生個資
-- 正式使用時統一用座號，不存學生真名（去識別化）
-
-## 跨裝置工作流程
-1. **開工前**：瀏覽「目前進度」與「最近更動紀錄」
-2. **工作中**：優先在 Google Drive 編輯，完成後同步至 Obsidian
-3. **收工前**：更新「最近更動紀錄」，標記同步狀態
-4. **跨電腦切換**：Google Drive 自動同步、Obsidian 確認 vault 同步、GitHub `git pull`
+> 📦 **同步策略、工作注意事項、跨裝置工作流程** 全部交給母專案 `CLAUDE.md`（上一層）統一管理，本檔不再重複維護。

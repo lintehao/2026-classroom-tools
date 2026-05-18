@@ -18,17 +18,20 @@ Codex 基本功 EP09 / EP09.5 / EP11 / EP12 的教學實作專案。
 | `index.html` | Supabase 成績記錄本 |
 | `wordcloud.html` | Supabase 文字雲 |
 | `wordcloud-firebase.html` | Firebase 文字雲 |
-| `math-homework.html` | Groq Vision + Firebase 作業批改 |
+| `classroom-irs.html` | 班級 IRS |
+| `formative-quiz.html` | 形成性測驗 |
+| `game-leaderboard.html` | 遊戲排行榜 |
+| `math-homework.html` | Groq/Gemini Vision + Firebase 作業批改 |
 | `firestore.rules` | Firestore 安全規則 |
 | `firebase.json` | Firebase CLI 設定 |
-| `AGENTS.md` | Codex 專案入口與固定規則 |
+| `AGENTS.md` / `CLAUDE.md` | AI 協作藍圖（Codex / Claude 視角） |
 
 ## 工作模式
 
-- 開工：對 Codex 說「開工」
-- 收工：對 Codex 說「收工」
-- 進度與踩坑：記在 Obsidian `2026database/專案工作流程.md`
-- 固定規則與專案邊界：記在 `AGENTS.md`
+- 開工：對 AI 說「開工」
+- 收工：對 AI 說「收工」
+- 進度與踩坑：記在母專案工作日誌 `Obsidian Vault/2026Claude一桌三櫃/工作日誌.md`
+- 固定規則與專案邊界：記在 `AGENTS.md` / `CLAUDE.md`
 
 ## 安全原則
 
